@@ -60,7 +60,7 @@ class Bugzilla:
 
     def __init__(self, url: str, api_key: str, use_auth_header: bool = False):
         self.base_url = url.rstrip("/")
-        self.api_url = f"{self.base_url}/rest"
+        self.api_url = f"{self.base_url}/rest.cgi"
         self.api_key = api_key
         params={}
         headers={"Content-Type": "application/json", "Accept": "application/json"}

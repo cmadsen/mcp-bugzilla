@@ -18,17 +18,7 @@ async def bz_client():
 @pytest.mark.asyncio
 async def test_bug_info(bz_client):
     async with respx.mock(base_url=MOCK_URL) as respx_mock:
-        # Note: Bugzilla client appends /rest to the base url passed in constructor
-        # and then requests /bug/{id} relative to that.
-        # But the bugzilla client sets base_url of httpx client to .../rest
-        # So we should match against the full URL or careful with defaults.
-        # Given the implementation: self.client = httpx.AsyncClient(base_url=self.api_url, ...)
-        # where self.api_url = url + "/rest"
-        # The request is client.get(f"/bug/{bug_id}") which resolves to {url}/rest/bug/{bug_id}
-
-        # respx mocks verify the full URL usually.
-
-        respx_mock.get("/rest/bug/123").mock(
+        respx_mock.get("/rest.cgi/bug/123").mock(
             return_value=Response(
                 200, json={"bugs": [{"id": 123, "summary": "Test Bug"}]}
             )
@@ -42,7 +32,7 @@ async def test_bug_info(bz_client):
 @pytest.mark.asyncio
 async def test_bug_comments(bz_client):
     async with respx.mock(base_url=MOCK_URL) as respx_mock:
-        respx_mock.get("/rest/bug/123/comment").mock(
+        respx_mock.get("/rest.cgi/bug/123/comment").mock(
             return_value=Response(
                 200,
                 json={
@@ -67,7 +57,7 @@ async def test_bug_comments(bz_client):
 async def test_add_comment(bz_client):
     async with respx.mock(base_url=MOCK_URL) as respx_mock:
         fake_response = {"id": 101}
-        route = respx_mock.post("/rest/bug/123/comment").mock(
+        route = respx_mock.post("/rest.cgi/bug/123/comment").mock(
             return_value=Response(201, json=fake_response)
         )
 
@@ -82,7 +72,7 @@ async def test_add_comment(bz_client):
 @pytest.mark.asyncio
 async def test_quicksearch(bz_client):
     async with respx.mock(base_url=MOCK_URL) as respx_mock:
-        route = respx_mock.get("/rest/bug").mock(
+        route = respx_mock.get("/rest.cgi/bug").mock(
             return_value=Response(200, json={"bugs": [{"id": 1}, {"id": 2}]})
         )
 
