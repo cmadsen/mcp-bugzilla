@@ -144,12 +144,14 @@ async def test_get_products(bz_client):
             )
         )
 
-        products = await bz_client.get_products()
+        products = await bz_client.get_products("name,components.name")
         assert len(products) == 2
         assert products[0]["name"] == "Foo"
 
         assert route.called
-        assert route.calls.last.request.url.params["type"] == "accessible"
+        params = route.calls.last.request.url.params
+        assert params["type"] == "accessible"
+        assert params["include_fields"] == "name,components.name"
 
 
 @pytest.mark.asyncio
@@ -180,9 +182,11 @@ async def test_find_users(bz_client):
             )
         )
 
-        users = await bz_client.find_users("jane")
+        users = await bz_client.find_users("jane", "id,name,real_name,email")
         assert len(users) == 1
         assert users[0]["email"] == "jane@example.com"
 
         assert route.called
-        assert route.calls.last.request.url.params["match"] == "jane"
+        params = route.calls.last.request.url.params
+        assert params["match"] == "jane"
+        assert params["include_fields"] == "id,name,real_name,email"

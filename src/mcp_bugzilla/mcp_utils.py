@@ -233,9 +233,16 @@ class Bugzilla:
         mcp_log.debug(f"[BZ-RES] {data}")
         return data
 
-    async def get_products(self) -> list[dict[str, Any]]:
-        """Get the products the user can file bugs against (accessible)"""
-        data = await self._request("GET", "/product", params={"type": "accessible"})
+    async def get_products(
+        self, include_fields: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """Get the products the user can file bugs against (accessible).
+        `include_fields` (Bugzilla dotted notation, e.g. 'name,components.name')
+        trims the otherwise large response; pass None for all fields."""
+        params: dict[str, Any] = {"type": "accessible"}
+        if include_fields:
+            params["include_fields"] = include_fields
+        data = await self._request("GET", "/product", params=params)
         products = data.get("products", [])
         mcp_log.info(f"[BZ-RES] Found {len(products)} products")
         return products
@@ -248,9 +255,16 @@ class Bugzilla:
         mcp_log.info(f"[BZ-RES] Found {len(values)} values for field '{field_name}'")
         return values
 
-    async def find_users(self, match: str) -> list[dict[str, Any]]:
-        """Search for users whose name or email matches the given string"""
-        data = await self._request("GET", "/user", params={"match": match})
+    async def find_users(
+        self, match: str, include_fields: Optional[str] = None
+    ) -> list[dict[str, Any]]:
+        """Search for users whose name or email matches the given string.
+        `include_fields` trims the response (a full user record includes groups
+        & saved searches); pass None for all fields."""
+        params: dict[str, Any] = {"match": match}
+        if include_fields:
+            params["include_fields"] = include_fields
+        data = await self._request("GET", "/user", params=params)
         users = data.get("users", [])
         mcp_log.info(f"[BZ-RES] Found {len(users)} users")
         return users

@@ -209,13 +209,22 @@ async def update_bug(
 
 
 @mcp.tool()
-async def get_products(bz: Bugzilla = Depends(get_bz)) -> List[dict[str, Any]]:
-    """List the products the user can file bugs against, including their
-    components, versions & milestones. Useful before calling `create_bug`.
+async def get_products(
+    include_fields: Optional[str] = "id,name,description,components.name,versions.name",
+    bz: Bugzilla = Depends(get_bz),
+) -> List[dict[str, Any]]:
+    """List the products the user can file bugs against. Useful before calling
+    `create_bug`.
+
+    By default returns a trimmed view (product name plus component & version
+    names) because the full payload across many products is very large. Pass
+    `include_fields` to control the fields (Bugzilla dotted notation, e.g.
+    'name,components.name,versions.name,milestones.name'), or an empty string
+    for the complete record.
     """
-    mcp_log.info("[LLM-REQ] get_products()")
+    mcp_log.info(f"[LLM-REQ] get_products(include_fields='{include_fields}')")
     try:
-        return await bz.get_products()
+        return await bz.get_products(include_fields or None)
     except Exception as e:
         raise ToolError(f"Failed to fetch products\nReason: {e}")
 
@@ -224,9 +233,12 @@ async def get_products(bz: Bugzilla = Depends(get_bz)) -> List[dict[str, Any]]:
 async def get_field_values(
     field_name: str, bz: Bugzilla = Depends(get_bz)
 ) -> List[dict[str, Any]]:
-    """Return the legal values for a bug field (e.g. 'severity', 'priority',
-    'op_sys', 'rep_platform', 'bug_status'). Useful for discovering valid
+    """Return the legal values for a bug field. Useful for discovering valid
     values before calling `create_bug` or `update_bug`.
+
+    Note: this endpoint expects Bugzilla's internal field names, e.g.
+    'bug_severity' (not 'severity'), 'priority', 'op_sys', 'rep_platform',
+    'bug_status', 'resolution', 'version', 'component'.
     """
     mcp_log.info(f"[LLM-REQ] get_field_values(field_name='{field_name}')")
     try:
@@ -237,14 +249,19 @@ async def get_field_values(
 
 @mcp.tool()
 async def find_users(
-    match: str, bz: Bugzilla = Depends(get_bz)
+    match: str,
+    include_fields: Optional[str] = "id,name,real_name,email",
+    bz: Bugzilla = Depends(get_bz),
 ) -> List[dict[str, Any]]:
     """Search for Bugzilla users whose real name or email matches the given
     string. Useful for resolving an assignee or cc before creating/updating a bug.
+
+    By default returns only id/name/real_name/email; pass `include_fields` to
+    control the fields, or an empty string for the complete user record.
     """
     mcp_log.info(f"[LLM-REQ] find_users(match='{match}')")
     try:
-        return await bz.find_users(match)
+        return await bz.find_users(match, include_fields or None)
     except Exception as e:
         raise ToolError(f"Failed to find users\nReason: {e}")
 

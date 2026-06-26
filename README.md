@@ -63,18 +63,21 @@ The server provides the following tools for interacting with Bugzilla:
 
 These tools help discover valid values before creating or updating a bug.
 
-- **`get_products()`**: Lists the products the user can file bugs against, including their components, versions, and milestones.
+- **`get_products(include_fields="id,name,description,components.name,versions.name")`**: Lists the products the user can file bugs against.
+  - **Parameters**:
+    - `include_fields`: Bugzilla field selection (dotted notation). Defaults to a trimmed view (the full payload across many products is very large); pass an empty string for the complete record.
   - **Returns**: A list of product dictionaries.
 
 - **`get_field_values(field_name: str)`**: Returns the legal values for a bug field.
   - **Parameters**:
-    - `field_name`: The field to query (e.g., `"severity"`, `"priority"`, `"op_sys"`, `"rep_platform"`, `"bug_status"`).
+    - `field_name`: The field's **internal** Bugzilla name, e.g. `"bug_severity"` (not `"severity"`), `"priority"`, `"op_sys"`, `"rep_platform"`, `"bug_status"`, `"resolution"`, `"version"`, `"component"`.
   - **Returns**: A list of value dictionaries.
-  - **Example**: `get_field_values("severity")`
+  - **Example**: `get_field_values("bug_severity")`
 
-- **`find_users(match: str)`**: Searches for users whose real name or email matches a string. Useful for resolving an assignee or cc.
+- **`find_users(match: str, include_fields="id,name,real_name,email")`**: Searches for users whose real name or email matches a string. Useful for resolving an assignee or cc.
   - **Parameters**:
     - `match`: The string to match against user names/emails.
+    - `include_fields`: Bugzilla field selection. Defaults to id/name/real_name/email; pass an empty string for the full user record (groups, saved searches, etc.).
   - **Returns**: A list of user dictionaries.
   - **Example**: `find_users("jane")`
 
