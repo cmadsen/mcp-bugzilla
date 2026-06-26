@@ -80,6 +80,32 @@ class Bugzilla:
     async def close(self):
         await self.client.aclose()
 
+    async def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        """Perform an HTTP request, log it, raise on error & return parsed JSON"""
+        extra = f" json={json}" if json is not None else ""
+        mcp_log.info(f"[BZ-REQ] {method} {self.api_url}{url}{extra}")
+
+        try:
+            r = await self.client.request(method, url, params=params, json=json)
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            mcp_log.error(
+                f"[BZ-RES] Failed: {e.response.status_code} {e.response.text}"
+            )
+            raise
+        except httpx.RequestError as e:
+            mcp_log.error(f"[BZ-RES] Network Error: {e}")
+            raise
+
+        return r.json()
+
     @property
     def params(self) -> dict[str, Any]:
         """Return params (mainly for read access if needed externally)"""
@@ -188,3 +214,43 @@ class Bugzilla:
         bugs = r.json().get("bugs", [])
         mcp_log.info(f"[BZ-RES] Found {len(bugs)} bugs")
         return bugs
+
+    async def create_bug(self, fields: dict[str, Any]) -> dict[str, Any]:
+        """Create a new bug. `fields` must include at least product, component,
+        summary & version. Returns the created bug, e.g. {"id": 12345}"""
+        data = await self._request("POST", "/bug", json=fields)
+        mcp_log.info(f"[BZ-RES] Created bug {data.get('id')}")
+        mcp_log.debug(f"[BZ-RES] {data}")
+        return data
+
+    async def update_bug(
+        self, bug_id: int, fields: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update fields of an existing bug. Returns the applied changes."""
+        payload = {"ids": [bug_id], **fields}
+        data = await self._request("PUT", f"/bug/{bug_id}", json=payload)
+        mcp_log.info(f"[BZ-RES] Updated bug {bug_id}")
+        mcp_log.debug(f"[BZ-RES] {data}")
+        return data
+
+    async def get_products(self) -> list[dict[str, Any]]:
+        """Get the products the user can file bugs against (accessible)"""
+        data = await self._request("GET", "/product", params={"type": "accessible"})
+        products = data.get("products", [])
+        mcp_log.info(f"[BZ-RES] Found {len(products)} products")
+        return products
+
+    async def get_field_values(self, field_name: str) -> list[dict[str, Any]]:
+        """Get the legal values of a bug field (e.g. component, version, severity)"""
+        data = await self._request("GET", f"/field/bug/{field_name}")
+        fields = data.get("fields", [])
+        values = fields[0].get("values", []) if fields else []
+        mcp_log.info(f"[BZ-RES] Found {len(values)} values for field '{field_name}'")
+        return values
+
+    async def find_users(self, match: str) -> list[dict[str, Any]]:
+        """Search for users whose name or email matches the given string"""
+        data = await self._request("GET", "/user", params={"match": match})
+        users = data.get("users", [])
+        mcp_log.info(f"[BZ-RES] Found {len(users)} users")
+        return users

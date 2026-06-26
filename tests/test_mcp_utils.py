@@ -90,3 +90,99 @@ async def test_quicksearch(bz_client):
         assert params["offset"] == "0"
         assert "include_fields" in params
         assert params["include_fields"] == "id,product"
+
+
+@pytest.mark.asyncio
+async def test_create_bug(bz_client):
+    async with respx.mock(base_url=MOCK_URL) as respx_mock:
+        route = respx_mock.post("/rest.cgi/bug").mock(
+            return_value=Response(200, json={"id": 12345})
+        )
+
+        fields = {
+            "product": "Foo",
+            "component": "Bar",
+            "summary": "It broke",
+            "version": "1.0",
+        }
+        resp = await bz_client.create_bug(fields)
+        assert resp == {"id": 12345}
+
+        assert route.called
+        assert route.calls.last.request.method == "POST"
+        import json as _json
+
+        assert _json.loads(route.calls.last.request.content) == fields
+
+
+@pytest.mark.asyncio
+async def test_update_bug(bz_client):
+    async with respx.mock(base_url=MOCK_URL) as respx_mock:
+        route = respx_mock.put("/rest.cgi/bug/123").mock(
+            return_value=Response(200, json={"bugs": [{"id": 123, "changes": {}}]})
+        )
+
+        resp = await bz_client.update_bug(123, {"status": "RESOLVED", "resolution": "FIXED"})
+        assert resp["bugs"][0]["id"] == 123
+
+        assert route.called
+        assert route.calls.last.request.method == "PUT"
+        import json as _json
+
+        body = _json.loads(route.calls.last.request.content)
+        assert body["ids"] == [123]
+        assert body["status"] == "RESOLVED"
+        assert body["resolution"] == "FIXED"
+
+
+@pytest.mark.asyncio
+async def test_get_products(bz_client):
+    async with respx.mock(base_url=MOCK_URL) as respx_mock:
+        route = respx_mock.get("/rest.cgi/product").mock(
+            return_value=Response(
+                200, json={"products": [{"id": 1, "name": "Foo"}, {"id": 2, "name": "Bar"}]}
+            )
+        )
+
+        products = await bz_client.get_products()
+        assert len(products) == 2
+        assert products[0]["name"] == "Foo"
+
+        assert route.called
+        assert route.calls.last.request.url.params["type"] == "accessible"
+
+
+@pytest.mark.asyncio
+async def test_get_field_values(bz_client):
+    async with respx.mock(base_url=MOCK_URL) as respx_mock:
+        respx_mock.get("/rest.cgi/field/bug/severity").mock(
+            return_value=Response(
+                200,
+                json={
+                    "fields": [
+                        {"name": "severity", "values": [{"name": "low"}, {"name": "high"}]}
+                    ]
+                },
+            )
+        )
+
+        values = await bz_client.get_field_values("severity")
+        assert len(values) == 2
+        assert values[1]["name"] == "high"
+
+
+@pytest.mark.asyncio
+async def test_find_users(bz_client):
+    async with respx.mock(base_url=MOCK_URL) as respx_mock:
+        route = respx_mock.get("/rest.cgi/user").mock(
+            return_value=Response(
+                200, json={"users": [{"id": 1, "email": "jane@example.com"}]}
+            )
+        )
+
+        users = await bz_client.find_users("jane")
+        assert len(users) == 1
+        assert users[0]["email"] == "jane@example.com"
+
+        assert route.called
+        assert route.calls.last.request.url.params["match"] == "jane"

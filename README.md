@@ -43,6 +43,41 @@ The server provides the following tools for interacting with Bugzilla:
   - **Returns**: A dictionary containing the ID of the newly created comment
   - **Example**: `add_comment(12345, "Fixed in version 2.0", is_private=False)`
 
+#### Bug Management
+
+- **`create_bug(product, component, summary, version, description=None, severity=None, priority=None, op_sys=None, platform=None, assigned_to=None, cc=None)`**: Creates a new bug (problem report).
+  - **Parameters**:
+    - `product`, `component`, `summary`, `version`: Required. Use `get_products` and `get_field_values` to discover valid values.
+    - The remaining parameters are optional bug fields (`cc` is a list of emails).
+  - **Returns**: A dictionary containing the ID of the newly created bug (e.g., `{"id": 12345}`)
+  - **Example**: `create_bug(product="Firefox", component="General", summary="Crash on startup", version="2.0")`
+
+- **`update_bug(bug_id, status=None, resolution=None, summary=None, assigned_to=None, severity=None, priority=None, component=None, version=None, dupe_of=None)`**: Updates fields of an existing bug. Only the provided fields are changed.
+  - **Parameters**:
+    - `bug_id`: The bug to update.
+    - Provide one or more fields to change. When resolving as `DUPLICATE`, pass `dupe_of`.
+  - **Returns**: A dictionary describing the changes that were applied.
+  - **Example**: `update_bug(12345, status="RESOLVED", resolution="FIXED")`
+
+#### Discovery
+
+These tools help discover valid values before creating or updating a bug.
+
+- **`get_products()`**: Lists the products the user can file bugs against, including their components, versions, and milestones.
+  - **Returns**: A list of product dictionaries.
+
+- **`get_field_values(field_name: str)`**: Returns the legal values for a bug field.
+  - **Parameters**:
+    - `field_name`: The field to query (e.g., `"severity"`, `"priority"`, `"op_sys"`, `"rep_platform"`, `"bug_status"`).
+  - **Returns**: A list of value dictionaries.
+  - **Example**: `get_field_values("severity")`
+
+- **`find_users(match: str)`**: Searches for users whose real name or email matches a string. Useful for resolving an assignee or cc.
+  - **Parameters**:
+    - `match`: The string to match against user names/emails.
+  - **Returns**: A list of user dictionaries.
+  - **Example**: `find_users("jane")`
+
 #### Bug Search
 
 - **`bugs_quicksearch(query: str, status: str = "ALL", include_fields: str = "...", limit: int = 50, offset: int = 0)`**: Executes a search for bugs using Bugzilla's powerful [quicksearch syntax](https://bugzilla.readthedocs.io/en/latest/using/finding.html#quicksearch).

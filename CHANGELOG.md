@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [Unreleased]
+
+### Added
+- Bug management tools: `create_bug` & `update_bug` for filing and triaging bugs.
+- Discovery tools: `get_products`, `get_field_values` & `find_users` to look up valid products/components, legal field values and assignees.
+
 ## [v0.10.0]
 
 ### Added

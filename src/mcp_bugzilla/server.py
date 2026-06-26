@@ -114,6 +114,142 @@ async def add_comment(
 
 
 @mcp.tool()
+async def create_bug(
+    product: str,
+    component: str,
+    summary: str,
+    version: str,
+    description: Optional[str] = None,
+    severity: Optional[str] = None,
+    priority: Optional[str] = None,
+    op_sys: Optional[str] = None,
+    platform: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    cc: Optional[List[str]] = None,
+    bz: Bugzilla = Depends(get_bz),
+) -> dict[str, Any]:
+    """Create a new bug (problem report).
+
+    `product`, `component`, `summary` & `version` are required. Use the
+    `get_products` & `get_field_values` tools to discover valid values, and
+    `find_users` to resolve an assignee. Returns the created bug id.
+    """
+    mcp_log.info(
+        f"[LLM-REQ] create_bug(product='{product}', component='{component}', summary='{summary}')"
+    )
+
+    fields: dict[str, Any] = {
+        "product": product,
+        "component": component,
+        "summary": summary,
+        "version": version,
+    }
+    for key, value in (
+        ("description", description),
+        ("severity", severity),
+        ("priority", priority),
+        ("op_sys", op_sys),
+        ("platform", platform),
+        ("assigned_to", assigned_to),
+        ("cc", cc),
+    ):
+        if value is not None:
+            fields[key] = value
+
+    try:
+        result = await bz.create_bug(fields)
+        return result
+    except Exception as e:
+        raise ToolError(f"Failed to create bug\nReason: {e}")
+
+
+@mcp.tool()
+async def update_bug(
+    bug_id: int,
+    status: Optional[str] = None,
+    resolution: Optional[str] = None,
+    summary: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    severity: Optional[str] = None,
+    priority: Optional[str] = None,
+    component: Optional[str] = None,
+    version: Optional[str] = None,
+    dupe_of: Optional[int] = None,
+    bz: Bugzilla = Depends(get_bz),
+) -> dict[str, Any]:
+    """Update fields of an existing bug, e.g. change its status, resolution or
+    assignee. Only the provided fields are changed. When resolving a bug as
+    DUPLICATE, pass `dupe_of`. Returns the changes that were applied.
+    """
+    mcp_log.info(f"[LLM-REQ] update_bug(bug_id={bug_id})")
+
+    fields: dict[str, Any] = {}
+    for key, value in (
+        ("status", status),
+        ("resolution", resolution),
+        ("summary", summary),
+        ("assigned_to", assigned_to),
+        ("severity", severity),
+        ("priority", priority),
+        ("component", component),
+        ("version", version),
+        ("dupe_of", dupe_of),
+    ):
+        if value is not None:
+            fields[key] = value
+
+    if not fields:
+        raise ToolError("No fields provided to update")
+
+    try:
+        result = await bz.update_bug(bug_id, fields)
+        return result
+    except Exception as e:
+        raise ToolError(f"Failed to update bug\nReason: {e}")
+
+
+@mcp.tool()
+async def get_products(bz: Bugzilla = Depends(get_bz)) -> List[dict[str, Any]]:
+    """List the products the user can file bugs against, including their
+    components, versions & milestones. Useful before calling `create_bug`.
+    """
+    mcp_log.info("[LLM-REQ] get_products()")
+    try:
+        return await bz.get_products()
+    except Exception as e:
+        raise ToolError(f"Failed to fetch products\nReason: {e}")
+
+
+@mcp.tool()
+async def get_field_values(
+    field_name: str, bz: Bugzilla = Depends(get_bz)
+) -> List[dict[str, Any]]:
+    """Return the legal values for a bug field (e.g. 'severity', 'priority',
+    'op_sys', 'rep_platform', 'bug_status'). Useful for discovering valid
+    values before calling `create_bug` or `update_bug`.
+    """
+    mcp_log.info(f"[LLM-REQ] get_field_values(field_name='{field_name}')")
+    try:
+        return await bz.get_field_values(field_name)
+    except Exception as e:
+        raise ToolError(f"Failed to fetch field values\nReason: {e}")
+
+
+@mcp.tool()
+async def find_users(
+    match: str, bz: Bugzilla = Depends(get_bz)
+) -> List[dict[str, Any]]:
+    """Search for Bugzilla users whose real name or email matches the given
+    string. Useful for resolving an assignee or cc before creating/updating a bug.
+    """
+    mcp_log.info(f"[LLM-REQ] find_users(match='{match}')")
+    try:
+        return await bz.find_users(match)
+    except Exception as e:
+        raise ToolError(f"Failed to find users\nReason: {e}")
+
+
+@mcp.tool()
 async def bugs_quicksearch(
     query: str,
     status: Optional[str] = "ALL",
