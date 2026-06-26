@@ -45,19 +45,19 @@ The server provides the following tools for interacting with Bugzilla:
 
 #### Bug Management
 
-- **`create_bug(product, component, summary, version, description=None, severity=None, priority=None, op_sys=None, platform=None, assigned_to=None, cc=None)`**: Creates a new bug (problem report).
+- **`create_bug(product, component, summary, version, description=None, severity=None, priority=None, op_sys=None, platform=None, assigned_to=None, cc=None, target_milestone=None)`**: Creates a new bug (problem report).
   - **Parameters**:
     - `product`, `component`, `summary`, `version`: Required. Use `get_products` and `get_field_values` to discover valid values.
-    - The remaining parameters are optional bug fields (`cc` is a list of emails).
+    - The remaining parameters are optional bug fields (`cc` is a list of emails; `target_milestone` must be one of the product's defined milestones).
   - **Returns**: A dictionary containing the ID of the newly created bug (e.g., `{"id": 12345}`)
-  - **Example**: `create_bug(product="Firefox", component="General", summary="Crash on startup", version="2.0")`
+  - **Example**: `create_bug(product="Firefox", component="General", summary="Crash on startup", version="2.0", target_milestone="3.0")`
 
-- **`update_bug(bug_id, status=None, resolution=None, summary=None, assigned_to=None, severity=None, priority=None, component=None, version=None, dupe_of=None)`**: Updates fields of an existing bug. Only the provided fields are changed.
+- **`update_bug(bug_id, status=None, resolution=None, summary=None, assigned_to=None, severity=None, priority=None, component=None, version=None, target_milestone=None, dupe_of=None, cc_add=None, cc_remove=None)`**: Updates fields of an existing bug. Only the provided fields are changed.
   - **Parameters**:
     - `bug_id`: The bug to update.
-    - Provide one or more fields to change. When resolving as `DUPLICATE`, pass `dupe_of`.
+    - Provide one or more fields to change. When resolving as `DUPLICATE`, pass `dupe_of`. To change the cc list, pass `cc_add` and/or `cc_remove` (lists of user emails).
   - **Returns**: A dictionary describing the changes that were applied.
-  - **Example**: `update_bug(12345, status="RESOLVED", resolution="FIXED")`
+  - **Example**: `update_bug(12345, status="RESOLVED", resolution="FIXED", target_milestone="3.0", cc_add=["dev@example.com"])`
 
 #### Discovery
 

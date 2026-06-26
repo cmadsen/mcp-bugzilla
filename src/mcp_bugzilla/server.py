@@ -126,13 +126,15 @@ async def create_bug(
     platform: Optional[str] = None,
     assigned_to: Optional[str] = None,
     cc: Optional[List[str]] = None,
+    target_milestone: Optional[str] = None,
     bz: Bugzilla = Depends(get_bz),
 ) -> dict[str, Any]:
     """Create a new bug (problem report).
 
     `product`, `component`, `summary` & `version` are required. Use the
     `get_products` & `get_field_values` tools to discover valid values, and
-    `find_users` to resolve an assignee. Returns the created bug id.
+    `find_users` to resolve an assignee. `target_milestone` must be one of the
+    product's defined milestones. Returns the created bug id.
     """
     mcp_log.info(
         f"[LLM-REQ] create_bug(product='{product}', component='{component}', summary='{summary}')"
@@ -152,6 +154,7 @@ async def create_bug(
         ("platform", platform),
         ("assigned_to", assigned_to),
         ("cc", cc),
+        ("target_milestone", target_milestone),
     ):
         if value is not None:
             fields[key] = value
@@ -174,12 +177,17 @@ async def update_bug(
     priority: Optional[str] = None,
     component: Optional[str] = None,
     version: Optional[str] = None,
+    target_milestone: Optional[str] = None,
     dupe_of: Optional[int] = None,
+    cc_add: Optional[List[str]] = None,
+    cc_remove: Optional[List[str]] = None,
     bz: Bugzilla = Depends(get_bz),
 ) -> dict[str, Any]:
-    """Update fields of an existing bug, e.g. change its status, resolution or
-    assignee. Only the provided fields are changed. When resolving a bug as
-    DUPLICATE, pass `dupe_of`. Returns the changes that were applied.
+    """Update fields of an existing bug, e.g. change its status, resolution,
+    assignee or target milestone. Only the provided fields are changed. When
+    resolving a bug as DUPLICATE, pass `dupe_of`. To change the cc list, pass
+    `cc_add` and/or `cc_remove` (lists of user emails). Returns the changes
+    that were applied.
     """
     mcp_log.info(f"[LLM-REQ] update_bug(bug_id={bug_id})")
 
@@ -193,10 +201,20 @@ async def update_bug(
         ("priority", priority),
         ("component", component),
         ("version", version),
+        ("target_milestone", target_milestone),
         ("dupe_of", dupe_of),
     ):
         if value is not None:
             fields[key] = value
+
+    # Bugzilla expects cc changes as {"add": [...], "remove": [...]}
+    cc: dict[str, List[str]] = {}
+    if cc_add is not None:
+        cc["add"] = cc_add
+    if cc_remove is not None:
+        cc["remove"] = cc_remove
+    if cc:
+        fields["cc"] = cc
 
     if not fields:
         raise ToolError("No fields provided to update")
