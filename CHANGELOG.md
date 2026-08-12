@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - Bug management tools: `create_bug` & `update_bug` for filing and triaging bugs.
+- `update_bug` takes a `custom_fields` mapping so the custom (`cf_`) fields an instance defines can be set without a code change. Names not starting with `cf_` are rejected, the built-in fields keep their own validated parameters.
 - Discovery tools: `get_products`, `get_field_values` & `find_users` to look up valid products/components, legal field values and assignees.
 
 ## [v0.10.0]

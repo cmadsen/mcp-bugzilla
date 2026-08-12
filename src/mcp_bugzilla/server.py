@@ -166,6 +166,25 @@ async def create_bug(
         raise ToolError(f"Failed to create bug\nReason: {e}")
 
 
+def add_custom_fields(
+    fields: dict[str, Any], custom_fields: Optional[dict[str, Any]]
+) -> None:
+    """Merge custom fields into an update payload. Only names starting with
+    `cf_` are accepted, so the built-in fields that have their own validated
+    parameters cannot be set this way."""
+    if not custom_fields:
+        return
+
+    not_custom = sorted(k for k in custom_fields if not k.startswith("cf_"))
+    if not_custom:
+        raise ToolError(
+            "custom_fields only takes custom field names starting with 'cf_', "
+            f"got: {', '.join(not_custom)}"
+        )
+
+    fields.update(custom_fields)
+
+
 @mcp.tool()
 async def update_bug(
     bug_id: int,
@@ -181,13 +200,16 @@ async def update_bug(
     dupe_of: Optional[int] = None,
     cc_add: Optional[List[str]] = None,
     cc_remove: Optional[List[str]] = None,
+    custom_fields: Optional[dict[str, Any]] = None,
     bz: Bugzilla = Depends(get_bz),
 ) -> dict[str, Any]:
     """Update fields of an existing bug, e.g. change its status, resolution,
     assignee or target milestone. Only the provided fields are changed. When
     resolving a bug as DUPLICATE, pass `dupe_of`. To change the cc list, pass
-    `cc_add` and/or `cc_remove` (lists of user emails). Returns the changes
-    that were applied.
+    `cc_add` and/or `cc_remove` (lists of user emails). Custom fields, which
+    differ per Bugzilla instance, go in `custom_fields` as a mapping of field
+    name to value, e.g. `{"cf_my_field": "..."}`; use `get_field_values` to
+    look up what an instance has. Returns the changes that were applied.
     """
     mcp_log.info(f"[LLM-REQ] update_bug(bug_id={bug_id})")
 
@@ -215,6 +237,8 @@ async def update_bug(
         cc["remove"] = cc_remove
     if cc:
         fields["cc"] = cc
+
+    add_custom_fields(fields, custom_fields)
 
     if not fields:
         raise ToolError("No fields provided to update")
